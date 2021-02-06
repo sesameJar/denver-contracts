@@ -41,15 +41,16 @@ contract EphimeraMarketplace is
     }
 
     uint256 public numChallenges = 0;
-    mapping(uint256 => Video) public videos;
+    mapping(string => Video) public videos;
     mapping(address => Challenge) public challengers; //TODO maybe we should change this so we can allow an address to participate in more than one challenges at a time
     mapping(uint256 => Challenge) public challenges;
 
-    function startChallenge(address _beneficiary, address[] _invitedAddresses, uint256 _endTimestamp, uint256 _minEntryFee, string _videoIPFSHash) public returns (uint256) {
+    function startChallenge(address _beneficiary, address[] calldata _invitedAddresses, uint256 _endTimestamp, uint256 _minEntryFee, string calldata _videoIPFSHash) 
+    nonReentrant public payable returns (uint256) {
 
       require(msg.value >= _minEntryFee, "startChallenge: You must at least match the minimum entry fee you set!");
 
-      uint256 _challengeId = numChallenges;
+      uint256 _challengeId = numChallenges+1;
 
       challenges[_challengeId] = Challenge({
         creator: _msgSender(),
@@ -58,19 +59,19 @@ contract EphimeraMarketplace is
         isPublic: _invitedAddresses.length == 0,
         endTimestamp: _endTimestamp,
         minEntryFee: _minEntryFee,
-        totalFund: msg.value,
+        totalFund: msg.value
       });
 
       videos[_videoIPFSHash] = Video({
         ipfsHash: _videoIPFSHash,
         creator: _msgSender(),
-        challengeId: _challengeId;
+        challengeId: _challengeId
       });
 
       emit ChallengeStarted(_challengeId, _msgSender(), _beneficiary, _endTimestamp);
 
       numChallenges = numChallenges.add(1);
-      return challengeId;
+      return _challengeId;
 
     }
 
