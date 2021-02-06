@@ -17,8 +17,6 @@ contract EphimeraMarketplace is
 {
     using SafeMath for uint256;
 
-    uint256 public numChallenges;
-
     event ChallengeStarted(
       uint256 indexed challengeId, 
       address creator, 
@@ -27,16 +25,51 @@ contract EphimeraMarketplace is
     );
 
     struct Challenge {
-      uint256 id;
-      uint256 endTimestamp;
       address creator;
+      address beneficiary;
+      address[] invitedAddresses;
+      bool isPublic;
+      uint256 endTimestamp;
+      uint256 minEntryFee;
+      uint256 totalFund;
     }
 
-    function startChallenge(address beneficiary, string videoIPFSHash, bool isPublic, uin256 endTimestamp) public returns (uint256) {
+    struct Video {
+      string ipfsHash;
+      address creator;
+      uint256 challengeId;
+    }
+
+    uint256 public numChallenges = 0;
+    mapping(uint256 => Video) public videos;
+    mapping(address => Challenge) public challengers; //TODO maybe we should change this so we can allow an address to participate in more than one challenges at a time
+    mapping(uint256 => Challenge) public challenges;
+
+    function startChallenge(address _beneficiary, address[] _invitedAddresses, uint256 _endTimestamp, uint256 _minEntryFee, string _videoIPFSHash) public returns (uint256) {
+
+      require(msg.value >= _minEntryFee, "startChallenge: You must at least match the minimum entry fee you set!");
+
+      uint256 _challengeId = numChallenges;
+
+      challenges[_challengeId] = Challenge({
+        creator: _msgSender(),
+        beneficiary: _beneficiary,
+        invitedAddresses: _invitedAddresses,
+        isPublic: _invitedAddresses.length == 0,
+        endTimestamp: _endTimestamp,
+        minEntryFee: _minEntryFee,
+        totalFund: msg.value,
+      });
+
+      videos[_videoIPFSHash] = Video({
+        ipfsHash: _videoIPFSHash,
+        creator: _msgSender(),
+        challengeId: _challengeId;
+      });
+
+      emit ChallengeStarted(_challengeId, _msgSender(), _beneficiary, _endTimestamp);
 
       numChallenges = numChallenges.add(1);
-      uint256 challengeId = numChallenges;
-      emit ChallengeStarted(challengeId, _msgSender(), beneficiary, endTimestamp)
       return challengeId;
 
     }
