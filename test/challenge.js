@@ -1,5 +1,5 @@
 const {BN, constants, expectEvent, expectRevert, ether, balance} = require('@openzeppelin/test-helpers');
-
+const {expect} = require('chai');
 const ChallengePlatform = artifacts.require("ChallengePlatform");
 
 contract('ChallengePlatform', ([challenger1, challender2, creator1, creator2, beneficiary, invitee, ...restOfAccounts]) => {
@@ -9,9 +9,9 @@ contract('ChallengePlatform', ([challenger1, challender2, creator1, creator2, be
     const ONE_ETH = ether(new BN('1'));
 
     it('setup', async () => {
-        const challengeContract = await ChallengePlatform.deployed()
+        const challengeContract = await ChallengePlatform.new()
     
-        assert.equal(challengeContract.bestVideoPercentage(), 700, "BEST VIDEO PLATFORM IS NOT EQUAL TO 7%");
-
+        // assert.equal(challengeContract.bestVideoPercentage(), 700, "BEST VIDEO PLATFORM IS NOT EQUAL TO 7%");
+        expect(await challengeContract.bestVideoPercentage()).to.be.bignumber.equal('700')
   });
 });
