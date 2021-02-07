@@ -48,6 +48,10 @@ contract ChallengePlatform is
     }
 
     uint256 public numChallenges = 0;
+    uint256 public creatorPercentage = 300;
+    uint256 public beneficiaryPercentage = 9000;
+    uint256 public bestVideoPercentage = 700;
+    
     mapping(string => Video) public videos;
     mapping(address => Challenge) public challengers; //TODO maybe we should change this so we can allow an address to participate in more than one challenges at a time
     mapping(uint256 => Challenge) public challenges;
