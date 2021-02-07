@@ -124,11 +124,4 @@ contract ChallengePlatform is
         emit NewChallengerJumpedIn(_challengeId, _msgSender(), _ipfsHash);
     }
 
-    
-
-    function getTime() view public returns (uint256) {
-      return now;
-    }
-    
-
 }
