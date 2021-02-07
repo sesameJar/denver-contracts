@@ -38,7 +38,6 @@ contract ChallengePlatform is
       uint256 endTimestamp;
       uint256 minEntryFee;
       uint256 totalFund;
-      bool isActive;
     }
 
     struct Video {
@@ -59,7 +58,7 @@ contract ChallengePlatform is
     function startChallenge(address _beneficiary, address[] calldata _invitedAddresses,
       uint256 _endTimestamp, uint256 _minEntryFee, string calldata _ipfsHash) 
       nonReentrant public payable returns (uint256) {
-
+      require(now < _endTimestamp, "");
       require(msg.value >= _minEntryFee, "startChallenge: You must at least match the minimum entry fee you set!");
       uint256 challengId = numChallenges + 1;
       // Challenge storage challenge = challenges[challengId];
@@ -70,8 +69,7 @@ contract ChallengePlatform is
         isPublic: _invitedAddresses.length == 0,
         endTimestamp: _endTimestamp,
         minEntryFee: _minEntryFee,
-        totalFund: msg.value,
-        isActive : true
+        totalFund: msg.value
       });
       //adding invitees to the mapping
       for(uint256 i =0 ; i< _invitedAddresses.length; i++) {
@@ -97,16 +95,16 @@ contract ChallengePlatform is
         
         Challenge storage challenge = challenges[_challengeId];
         // challege is going on
-        require( challenge.isActive, "Error in challenge.participateInChallenge : Challenge resolved.");
-        // require(now < challeng.endTimestamp, "Error in challenge.participateInChallenge : challenge ended.");
+        // require( challenge.isActive, "Error in challenge.participateInChallenge : Challenge resolved.");
+        require(now < challenge.endTimestamp, "challenge.participateInChallenge : challenge resolved.");
         // in case of challenge is not active, 
         if (!challenge.isPublic) {
-          require(challenge.invitedAddresses[_msgSender()], "Error in challenge.participateInChallenge : user is not invited");
+          require(challenge.invitedAddresses[_msgSender()], "challenge.participateInChallenge : user is not invited");
         }
 
         //if there's entrance fee
         if(challenge.minEntryFee > 0) {
-          require(msg.value >= challenge.minEntryFee, "Error in challenge.participateInChallenge : Must at least pay the entrance fee.");
+          require(msg.value >= challenge.minEntryFee, "challenge.participateInChallenge : Must at least pay the entrance fee.");
         }
 
         challenge.totalFund += msg.value;

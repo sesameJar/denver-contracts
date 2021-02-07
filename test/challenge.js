@@ -45,6 +45,30 @@ contract('ChallengePlatform', ([challenger1, challender2, creator1, creator2, be
 
         })
     });
+
+    describe('Jumping in a challenge', () => { 
+        beforeEach(async() => {
+            await this.challenge.startChallenge(beneficiary1,[],new BN('99999999999999'), ONE_ETH, "TEST1", {
+                from: creator1,
+                value: ONE_ETH
+            })
+        })
+        it("can't jumpIn if entrance fee is lower than the challge's is", async ()=>{
+            await expectRevert(
+                this.challenge.participateInChallenge(CHALLENGE_1, [], '123ABC', {from: challender2 }),
+                "challenge.participateInChallenge : Must at least pay the entrance fee."
+            )  
+        })
+
+        it("Video info must be updated on a successful jumpIn", async ()=>{
+            const { challengeId } = await this.challenge.videos("TEST1")
+            const { creator, beneficiary, totalFund } = await this.challenge.challenges(challengeId)
+            
+            expect(creator).to.be.equal(creator1)
+            expect(beneficiary).to.be.equal(beneficiary1)
+            expect(totalFund).to.be.bignumber.equal(ONE_ETH) 
+        })
+    })
     
 
 });
