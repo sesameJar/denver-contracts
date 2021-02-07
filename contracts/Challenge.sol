@@ -27,7 +27,7 @@ contract ChallengePlatform is
     event NewChallengerJumpedIn(
       uint256 indexed challengeId,
       address indexed challenger,
-      string indexed ipfsHash
+      string ipfsHash
     );
 
     struct Challenge {
@@ -57,7 +57,7 @@ contract ChallengePlatform is
     function startChallenge(address _beneficiary, address[] calldata _invitedAddresses,
       uint256 _endTimestamp, uint256 _minEntryFee, string calldata _ipfsHash) 
       nonReentrant public payable returns (uint256) {
-      require(now < _endTimestamp, "");
+      require(now < _endTimestamp, "Challenge.startChallenge: endTimestamp must be bigger than current timestamp.");
       require(msg.value >= _minEntryFee, "Challenge.startChallenge: You must at least match the minimum entry fee you set!");
       uint256 challengId = numChallenges + 1;
 
@@ -126,7 +126,9 @@ contract ChallengePlatform is
 
     
 
-
+    function getTime() view public returns (uint256) {
+      return now;
+    }
     
 
 }

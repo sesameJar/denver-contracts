@@ -9,7 +9,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
     const ZERO_ETH = ether(new BN('0'));
     const ONE_ETH = ether(new BN('1'));
     const ONE = new BN('1');
-    const END_TIMESTAMP_1 = new BN('99999999999999');
+    const END_TIMESTAMP_1 = new BN('99999999999');
     const IPFSHASH_1 = 'TEST1'
     const IPFSHASH_2 = '123ABC'
     beforeEach(async () => {
@@ -66,7 +66,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
     });
 
     describe('Jumping in a challenge', () => { 
-        beforeEach(async() => {
+        beforeEach(async () => {
             const logs = await this.challenge.startChallenge(beneficiary1, [challenger1], END_TIMESTAMP_1, ONE_ETH, IPFSHASH_1, {
                 from: creator1,
                 value: ONE_ETH
@@ -79,16 +79,9 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
             })
         })
 
-        // it("Can't jumpIn if the challenge has ended", async () => {
-        //     const { endTimestamp } = await this.challenge.challenges(CHALLENGE_1)
-        //     await time.increaseTo(endTimestamp.add(ONE))
-        //     await expectRevert(
-        //         this.challenge.jumpIn(CHALLENGE_1, [], IPFSHASH_2, { from: challenger1, value: ONE_ETH }),
-        //         "Challenge.jumpIn: Challenge ended."
-        //     )  
-        // })
 
         it("Can't jumpIn if the challenge is not public and you are not invited", async () => {
+            console.log("BEFORE TIME",Number(await this.challenge.getTime()))
             await expectRevert(
                 this.challenge.jumpIn(CHALLENGE_1, [], IPFSHASH_2, { from: challenger2, value: ONE_ETH }),
                 "Challenge.jumpIn: You need a challenger's invitation."
@@ -104,12 +97,13 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
 
         it("Video and challenge info must be updated on a successful jumpIn", async () => {
             const challengeBefore = await this.challenge.challenges(CHALLENGE_1)
-            const logs = await this.challenge.jumpIn(CHALLENGE_1, [], IPFSHASH_2, { from: challenger1, value: ONE_ETH })
-            await expectEvent(logs, 'NewChallengerJumpedIn', {
+            const {receipt} = await this.challenge.jumpIn(CHALLENGE_1, [], IPFSHASH_2, { from: challenger1, value: ONE_ETH })
+            await expectEvent(receipt, 'NewChallengerJumpedIn', {
                 challengeId: CHALLENGE_1,
                 challenger: challenger1,
                 ipfsHash: IPFSHASH_2
             })
+            
             const video = await this.challenge.videos(IPFSHASH_2)
             expect(video.challengeId).to.be.bignumber.equal(CHALLENGE_1)
             expect(video.creator).to.be.equal(challenger1)
@@ -119,6 +113,17 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
             expect(challengeAfter.creator).to.be.equal(challengeBefore.creator)
             expect(challengeAfter.beneficiary).to.be.equal(challengeBefore.beneficiary)
             expect(challengeAfter.totalFund).to.be.bignumber.equal(challengeBefore.totalFund.add(ONE_ETH)) 
+        })
+        // this test is going to change time to the future so it HAS TO BE LATEST!
+        it("Can't jumpIn if the challenge has ended", async () => {
+            const { endTimestamp } = await this.challenge.challenges(CHALLENGE_1)
+            console.log("BEFORE TIME",Number(await this.challenge.getTime()))
+            const testTime = await time.increaseTo(endTimestamp.add(ONE))
+            console.log("AFTERT TIME",Number(await this.challenge.getTime()))
+            await expectRevert(
+                this.challenge.jumpIn(CHALLENGE_1, [], IPFSHASH_2, { from: challenger1, value: ONE_ETH }),
+                "Challenge.jumpIn: Challenge ended."
+            )
         })
     })
     
