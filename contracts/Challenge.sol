@@ -51,13 +51,13 @@ contract ChallengePlatform is
     uint256 public creatorPercentage = 300;
     uint256 public beneficiaryPercentage = 9000;
     uint256 public bestVideoPercentage = 700;
-    
+
     mapping(string => Video) public videos;
     mapping(address => Challenge) public challengers; //TODO maybe we should change this so we can allow an address to participate in more than one challenges at a time
     mapping(uint256 => Challenge) public challenges;
 
     function startChallenge(address _beneficiary, address[] calldata _invitedAddresses,
-      uint256 _endTimestamp, uint256 _minEntryFee, string calldata _videoIPFSHash) 
+      uint256 _endTimestamp, uint256 _minEntryFee, string calldata _ipfsHash) 
       nonReentrant public payable returns (uint256) {
 
       require(msg.value >= _minEntryFee, "startChallenge: You must at least match the minimum entry fee you set!");
@@ -78,8 +78,8 @@ contract ChallengePlatform is
         challenges[challengId].invitedAddresses[_invitedAddresses[i]] = true;
       }
 
-      videos[_videoIPFSHash] = Video({
-        ipfsHash: _videoIPFSHash,
+      videos[_ipfsHash] = Video({
+        ipfsHash: _ipfsHash,
         creator: _msgSender(),
         challengeId: challengId
       });
@@ -101,7 +101,7 @@ contract ChallengePlatform is
         // require(now < challeng.endTimestamp, "Error in challenge.participateInChallenge : challenge ended.");
         // in case of challenge is not active, 
         if (!challenge.isPublic) {
-          require(challenge.invitedAddresses[msg.sender], "Error in challenge.participateInChallenge : user is not invited");
+          require(challenge.invitedAddresses[_msgSender()], "Error in challenge.participateInChallenge : user is not invited");
         }
 
         //if there's entrance fee
@@ -110,16 +110,24 @@ contract ChallengePlatform is
         }
 
         challenge.totalFund += msg.value;
-        challenge.invitedAddresses[msg.sender] = true;
+        challenge.invitedAddresses[_msgSender()] = true;
 
         //adding invitees to the mapping
         for(uint256 i =0 ; i< _invitedAddresses.length; i++) {
           challenge.invitedAddresses[_invitedAddresses[i]] = true;
         }
-
+        videos[_ipfsHash] = Video({
+        ipfsHash: _ipfsHash,
+        creator: _msgSender(),
+        challengeId: _challengeId
+      });
         // challengers[msg.sender] = challenge; TODO: not sure why
-        
-        emit NewChallengerJoined(_challengeId, msg.sender, _ipfsHash);
+        emit NewChallengerJoined(_challengeId, _msgSender(), _ipfsHash);
     }
+
+    
+
+
+    
 
 }
