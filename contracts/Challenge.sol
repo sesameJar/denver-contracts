@@ -17,14 +17,14 @@ contract ChallengePlatform is
 {
     using SafeMath for uint256;
 
-    event ChallengeStarted(
+    event NewChallengeStarted(
       uint256 indexed challengeId, 
       address indexed creator, 
       address indexed beneficiary, 
       uint256 endTimestamp
     );
 
-    event NewChallengerJoined(
+    event NewChallengerJumpedIn(
       uint256 indexed challengeId,
       address indexed challenger,
       string indexed ipfsHash
@@ -52,15 +52,15 @@ contract ChallengePlatform is
     uint256 public bestVideoPercentage = 700;
 
     mapping(string => Video) public videos;
-    mapping(address => Challenge) public challengers; //TODO maybe we should change this so we can allow an address to participate in more than one challenges at a time
     mapping(uint256 => Challenge) public challenges;
 
     function startChallenge(address _beneficiary, address[] calldata _invitedAddresses,
       uint256 _endTimestamp, uint256 _minEntryFee, string calldata _ipfsHash) 
       nonReentrant public payable returns (uint256) {
       require(now < _endTimestamp, "");
-      require(msg.value >= _minEntryFee, "startChallenge: You must at least match the minimum entry fee you set!");
+      require(msg.value >= _minEntryFee, "Challenge.startChallenge: You must at least match the minimum entry fee you set!");
       uint256 challengId = numChallenges + 1;
+
       // Challenge storage challenge = challenges[challengId];
 
       challenges[challengId] = Challenge({
@@ -71,7 +71,8 @@ contract ChallengePlatform is
         minEntryFee: _minEntryFee,
         totalFund: msg.value
       });
-      //adding invitees to the mapping
+
+      // adding invitees to the mapping
       for(uint256 i =0 ; i< _invitedAddresses.length; i++) {
         challenges[challengId].invitedAddresses[_invitedAddresses[i]] = true;
       }
@@ -83,44 +84,44 @@ contract ChallengePlatform is
       });
       numChallenges = numChallenges.add(1);
 
-      emit ChallengeStarted(challengId, _msgSender(), _beneficiary, _endTimestamp);
+      emit NewChallengeStarted(challengId, _msgSender(), _beneficiary, _endTimestamp);
 
       return challengId;
 
     }
 
-    function participateInChallenge(uint256 _challengeId,
+    function jumpIn(uint256 _challengeId,
       address[] calldata _invitedAddresses, string calldata _ipfsHash)
       nonReentrant public payable {
         
         Challenge storage challenge = challenges[_challengeId];
-        // challege is going on
-        // require( challenge.isActive, "Error in challenge.participateInChallenge : Challenge resolved.");
-        require(now < challenge.endTimestamp, "challenge.participateInChallenge : challenge resolved.");
-        // in case of challenge is not active, 
+
+        // challenge hasn't ended
+        require(now < challenge.endTimestamp, "Challenge.jumpIn: Challenge ended.");
+
         if (!challenge.isPublic) {
-          require(challenge.invitedAddresses[_msgSender()], "challenge.participateInChallenge : user is not invited");
+          require(challenge.invitedAddresses[_msgSender()], "Challenge.jumpIn: You need a challenger's invitation.");
         }
 
-        //if there's entrance fee
+        // if there's an entry fee
         if(challenge.minEntryFee > 0) {
-          require(msg.value >= challenge.minEntryFee, "challenge.participateInChallenge : Must at least pay the entrance fee.");
+          require(msg.value >= challenge.minEntryFee, "Challenge.jumpIn: Please match the minimum entry fee.");
         }
 
         challenge.totalFund += msg.value;
         challenge.invitedAddresses[_msgSender()] = true;
 
-        //adding invitees to the mapping
+        // adding invitees to the mapping
         for(uint256 i =0 ; i< _invitedAddresses.length; i++) {
           challenge.invitedAddresses[_invitedAddresses[i]] = true;
         }
         videos[_ipfsHash] = Video({
-        ipfsHash: _ipfsHash,
-        creator: _msgSender(),
-        challengeId: _challengeId
-      });
-        // challengers[msg.sender] = challenge; TODO: not sure why
-        emit NewChallengerJoined(_challengeId, _msgSender(), _ipfsHash);
+          ipfsHash: _ipfsHash,
+          creator: _msgSender(),
+          challengeId: _challengeId
+        });
+
+        emit NewChallengerJumpedIn(_challengeId, _msgSender(), _ipfsHash);
     }
 
     
