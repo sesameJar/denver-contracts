@@ -180,27 +180,47 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
 
         })
 
-        it("winner account must be update", async () => {
-            const winnerShare = new BN("10000")
+        it("winner's balance must be update", async () => {
+            // winners share = 100 - (beneficiary's share) - (creator's share)
+            const winnerPercentage = new BN("10000")
                 .sub(await this.challenge.creatorPercentage())
                 .sub(await this.challenge.beneficiaryPercentage())
             const winnerBalanceBefore = await balance.current(winner);
-            const challengeBefore = await this.challenge.challenges(CHALLENGE_1)
-            await time.increaseTo(challengeBefore.endTimestamp.add(ONE));
-            await this.challenge.resolveChallenge(CHALLENGE_1, winner, { from: creator1 });
             
 
-
+            const challengeBefore = await this.challenge.challenges(CHALLENGE_1)
+            const winnerShare =  challengeBefore.totalFund
+                            .div(new BN("10000"))
+                .mul(winnerPercentage)
+            await time.increaseTo(challengeBefore.endTimestamp.add(ONE));
+            await this.challenge.resolveChallenge(CHALLENGE_1, winner, { from: creator1 });
+    
             expect(await balance.current(winner))
                 .to.be.bignumber.equal(
                     winnerBalanceBefore.add(
-                        challengeBefore.totalFund
-                            .div(new BN("10000"))
-                            .mul(winnerShare)
+                       winnerShare
                     )
                 )
-            
+        });
 
+        it("creator's balance must be update", async () => {
+            
+            const creatorPercentage = await this.challenge.creatorPercentage() 
+            const creatorBalanceBefore = await balance.current(creator1);
+            const challengeBefore = await this.challenge.challenges(CHALLENGE_1)
+            
+            const creatorShare = challengeBefore.totalFund
+                            .div(new BN("10000"))
+                .mul(creatorPercentage)
+            await time.increaseTo(challengeBefore.endTimestamp.add(ONE));
+            await this.challenge.resolveChallenge(CHALLENGE_1, winner, { from: beneficiary1 });
+    
+            expect(await balance.current(creator1))
+                .to.be.bignumber.equal(
+                    creatorBalanceBefore.add(
+                        creatorShare
+                    )
+                )
         });
     })
     
