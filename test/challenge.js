@@ -22,8 +22,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
             this.challengeEndTimestamp = now.add(new BN((13 * 24 * 60 * 60).toString()))
         })
         it('Setup', async () => {
-            // assert.equal(challengeContract.bestVideoPercentage(), 700, "BEST VIDEO PLATFORM IS NOT EQUAL TO 7%");
-            expect(await this.challenge.bestVideoPercentage()).to.be.bignumber.equal('700')
+            expect(await this.challenge.winnerPercentage()).to.be.bignumber.equal('700')
         });
 
         it('Min entry fee is sent if set by the challenge creator', async () => {
@@ -136,7 +135,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
     describe('Resolve a challenge', () => { 
         beforeEach(async () => {
             const now = await time.latest()
-            const challengeEndTimestamp = now.add(new BN((15 * 24 * 60 * 60).toString()))
+            const challengeEndTimestamp = now.add(new BN((19 * 24 * 60 * 60).toString()))
             const logs = await this.challenge.startChallenge(beneficiary1, [challenger1], challengeEndTimestamp, ONE_ETH, IPFSHASH_1, {
                 from: creator1,
                 value: ONE_ETH
@@ -181,12 +180,28 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
 
         })
 
-        // it("winner account must be update", async () => {
-        //     const beforeWinnerBalance = await balance.current(beneficiary1);
-        //     await time.increaseTo(END_TIMESTAMP_1.add(ONE));
-        //     await this.challenge.resolveChallenge(CHALLENGE_1, winner);
+        it("winner account must be update", async () => {
+            const winnerShare = new BN("10000")
+                .sub(await this.challenge.creatorPercentage())
+                .sub(await this.challenge.beneficiaryPercentage())
+            const winnerBalanceBefore = await balance.current(winner);
+            const challengeBefore = await this.challenge.challenges(CHALLENGE_1)
+            await time.increaseTo(challengeBefore.endTimestamp.add(ONE));
+            await this.challenge.resolveChallenge(CHALLENGE_1, winner, { from: creator1 });
+            
 
-        // });
+
+            expect(await balance.current(winner))
+                .to.be.bignumber.equal(
+                    winnerBalanceBefore.add(
+                        challengeBefore.totalFund
+                            .div(new BN("10000"))
+                            .mul(winnerShare)
+                    )
+                )
+            
+
+        });
     })
     
 

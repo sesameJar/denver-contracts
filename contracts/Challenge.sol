@@ -63,7 +63,7 @@ contract ChallengePlatform is
     uint256 public numChallenges = 0;
     uint256 public creatorPercentage = 300;
     uint256 public beneficiaryPercentage = 9000;
-    uint256 public bestVideoPercentage = 700;
+    uint256 public winnerPercentage = 700;// maybe we can drop this
     uint256 constant ONE_HUNDRED_SCALED = 10000;
 
     mapping(string => Video) public videos;
@@ -147,14 +147,18 @@ contract ChallengePlatform is
 
       // check if endTimestamp has reached
       require(now > challenge.endTimestamp, "Challenge.resolveChallenge : challenge is still going on.");
-      
-      //TODO : send a chinlink get req to get highest like
-      //split funds if 
+      require(challenge.totalFund > 0, "Challenge.resolveChallenge : Challenge either resolve or raised zero fund.");
+      //TODO : send a chinlink get req to get highest like 
       uint256 totalFund = challenge.totalFund;
-      if(totalFund > 0) {
-        challenge.totalFund = 0;
-        _splitFundsInChallenge(challenge.beneficiary, challenge.creator, _winner, totalFund);
-      } 
+
+      //commented code explaination : originally used to like this but the only way to prevent 
+      // resolveing a challenge more than once is to check totalBalance. 
+      // if(totalFund > 0) {
+      //   challenge.totalFund = 0;
+      //   _splitFundsInChallenge(challenge.beneficiary, challenge.creator, _winner, totalFund);
+      // } 
+      challenge.totalFund = 0;
+      _splitFundsInChallenge(challenge.beneficiary, challenge.creator, _winner, totalFund);
       // TODO: REPLACE IPFS_HASH WITH HARDCODED TEXT BELOW
       emit ChallengeResolved(_challengeId, _winner, "TEST", totalFund);
     }
