@@ -2,7 +2,7 @@ const {BN, constants, expectEvent, expectRevert, ether, balance, time} = require
 const {expect} = require('chai');
 const ChallengePlatform = artifacts.require("ChallengePlatform");
 
-contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, beneficiary1, invitee, ...restOfAccounts]) => {
+contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, beneficiary1, invitee, ...restOfAccounts]) => {
 
     const CHALLENGE_1 = new BN('1');
     const CHALLENGE_2 = new BN('2');
@@ -17,13 +17,18 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
     })
 
     describe('Creating a new Challenge', () => {
+        beforeEach(async () => {
+            const now = await time.latest();
+            this.challengeEndTimestamp = now.add(new BN((13 * 24 * 60 * 60).toString()))
+        })
         it('Setup', async () => {
             // assert.equal(challengeContract.bestVideoPercentage(), 700, "BEST VIDEO PLATFORM IS NOT EQUAL TO 7%");
             expect(await this.challenge.bestVideoPercentage()).to.be.bignumber.equal('700')
         });
 
         it('Min entry fee is sent if set by the challenge creator', async () => {
-            await expectRevert(this.challenge.startChallenge(beneficiary1,[],END_TIMESTAMP_1, ONE_ETH, IPFSHASH_1, {
+            
+            await expectRevert(this.challenge.startChallenge(beneficiary1,[],this.challengeEndTimestamp, ONE_ETH, IPFSHASH_1, {
                     from: creator1,
                     value: ZERO_ETH
                 }), 
@@ -32,7 +37,8 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
         })
         
         it('Video must be added after a new challenge is created', async () => {
-            await this.challenge.startChallenge(beneficiary1,[],END_TIMESTAMP_1, ONE_ETH, IPFSHASH_1, {
+            expect(await this.challenge.numChallenges()).to.be.bignumber.equal("0");
+            await this.challenge.startChallenge(beneficiary1,[],this.challengeEndTimestamp, ONE_ETH, IPFSHASH_1, {
                 from: creator1,
                 value: ONE_ETH
             })
@@ -45,7 +51,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
         })
 
         it('Challenge must be added to the list of challenges', async () => {
-            const logs = await this.challenge.startChallenge(beneficiary1,[],END_TIMESTAMP_1, ONE_ETH, IPFSHASH_1, {
+            const logs = await this.challenge.startChallenge(beneficiary1,[],this.challengeEndTimestamp, ONE_ETH, IPFSHASH_1, {
                 from: creator1,
                 value: ONE_ETH
             })
@@ -53,7 +59,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
                 challengeId: CHALLENGE_1,
                 creator: creator1,
                 beneficiary: beneficiary1,
-                endTimestamp: END_TIMESTAMP_1
+                endTimestamp: this.challengeEndTimestamp
             })
             const { challengeId } = await this.challenge.videos(IPFSHASH_1)
             const { creator, beneficiary, totalFund } = await this.challenge.challenges(challengeId)
@@ -67,7 +73,9 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
 
     describe('Jumping in a challenge', () => { 
         beforeEach(async () => {
-            const logs = await this.challenge.startChallenge(beneficiary1, [challenger1], END_TIMESTAMP_1, ONE_ETH, IPFSHASH_1, {
+            const now = await time.latest();
+            const challengeEndTimestamp = now.add(new BN((13 * 24 * 60 * 60).toString()))
+            const logs = await this.challenge.startChallenge(beneficiary1, [challenger1], challengeEndTimestamp, ONE_ETH, IPFSHASH_1, {
                 from: creator1,
                 value: ONE_ETH
             })
@@ -75,13 +83,12 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
                 challengeId: CHALLENGE_1,
                 creator: creator1,
                 beneficiary: beneficiary1,
-                endTimestamp: END_TIMESTAMP_1
+                endTimestamp: challengeEndTimestamp
             })
         })
 
 
         it("Can't jumpIn if the challenge is not public and you are not invited", async () => {
-            console.log("BEFORE TIME",Number(await this.challenge.getTime()))
             await expectRevert(
                 this.challenge.jumpIn(CHALLENGE_1, [], IPFSHASH_2, { from: challenger2, value: ONE_ETH }),
                 "Challenge.jumpIn: You need a challenger's invitation."
@@ -117,14 +124,69 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, creator2, be
         // this test is going to change time to the future so it HAS TO BE LATEST!
         it("Can't jumpIn if the challenge has ended", async () => {
             const { endTimestamp } = await this.challenge.challenges(CHALLENGE_1)
-            console.log("BEFORE TIME",Number(await this.challenge.getTime()))
-            const testTime = await time.increaseTo(endTimestamp.add(ONE))
-            console.log("AFTERT TIME",Number(await this.challenge.getTime()))
+             await time.increaseTo(endTimestamp.add(ONE))
+
             await expectRevert(
                 this.challenge.jumpIn(CHALLENGE_1, [], IPFSHASH_2, { from: challenger1, value: ONE_ETH }),
                 "Challenge.jumpIn: Challenge ended."
             )
         })
+    })
+
+    describe('Resolve a challenge', () => { 
+        beforeEach(async () => {
+            const now = await time.latest()
+            const challengeEndTimestamp = now.add(new BN((15 * 24 * 60 * 60).toString()))
+            const logs = await this.challenge.startChallenge(beneficiary1, [challenger1], challengeEndTimestamp, ONE_ETH, IPFSHASH_1, {
+                from: creator1,
+                value: ONE_ETH
+            })
+            await expectEvent(logs, 'NewChallengeStarted', {
+                challengeId: CHALLENGE_1,
+                creator: creator1,
+                beneficiary: beneficiary1,
+                endTimestamp: challengeEndTimestamp
+            })
+        })
+         
+        it("must fail if challenge hasn't ended", async () => {
+             await expectRevert(
+                 this.challenge.resolveChallenge(CHALLENGE_1, winner),
+                 "Challenge.resolveChallenge : challenge is still going on."
+            )
+        })
+
+        it("must fail if challenge does not exist", async () => {
+             await expectRevert(
+                 this.challenge.resolveChallenge(new BN("1000"), winner),
+                 "Challenge.resolveChallenge : challenge does not exists"
+            )
+        })
+
+        it("total funds are 0 after resolved", async () => {
+            const {totalFund, endTimestamp} = await this.challenge.challenges(CHALLENGE_1)
+            await time.increaseTo(endTimestamp.add(ONE));
+            const {receipt} = await this.challenge.resolveChallenge(CHALLENGE_1, winner);
+            
+            await expectEvent(receipt, "ChallengeResolved", {
+                challengeId: CHALLENGE_1,
+                winner, 
+                ipfsHash: "TEST",
+                totalFund
+            })
+            const challengeAfterResolve = await this.challenge.challenges(CHALLENGE_1)
+            expect(
+                challengeAfterResolve.totalFund
+            ).to.be.bignumber.equal("0");
+
+        })
+
+        // it("winner account must be update", async () => {
+        //     const beforeWinnerBalance = await balance.current(beneficiary1);
+        //     await time.increaseTo(END_TIMESTAMP_1.add(ONE));
+        //     await this.challenge.resolveChallenge(CHALLENGE_1, winner);
+
+        // });
     })
     
 

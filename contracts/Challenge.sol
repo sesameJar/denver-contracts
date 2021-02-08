@@ -30,9 +30,23 @@ contract ChallengePlatform is
       string ipfsHash
     );
 
+    event ChallengeResolved(
+      uint256 indexed challengeId,
+      address indexed winner,
+      string ipfsHash,
+      uint256 totalFund
+    );
+
+    event FundsSplitted(
+      address indexed beneficiary,
+      address indexed creator,
+      address indexed winner,
+      uint256 totalFund
+    );
+
     struct Challenge {
-      address creator;
-      address beneficiary;
+      address payable creator;
+      address payable beneficiary;
       mapping(address => bool)  invitedAddresses;
       bool isPublic;
       uint256 endTimestamp;
@@ -50,11 +64,12 @@ contract ChallengePlatform is
     uint256 public creatorPercentage = 300;
     uint256 public beneficiaryPercentage = 9000;
     uint256 public bestVideoPercentage = 700;
+    uint256 constant ONE_HUNDRED_SCALED = 10000;
 
     mapping(string => Video) public videos;
     mapping(uint256 => Challenge) public challenges;
 
-    function startChallenge(address _beneficiary, address[] calldata _invitedAddresses,
+    function startChallenge(address payable _beneficiary, address[] calldata _invitedAddresses,
       uint256 _endTimestamp, uint256 _minEntryFee, string calldata _ipfsHash) 
       nonReentrant public payable returns (uint256) {
       require(now < _endTimestamp, "Challenge.startChallenge: endTimestamp must be bigger than current timestamp.");
@@ -108,7 +123,7 @@ contract ChallengePlatform is
           require(msg.value >= challenge.minEntryFee, "Challenge.jumpIn: Please match the minimum entry fee.");
         }
 
-        challenge.totalFund += msg.value;
+        challenge.totalFund = challenge.totalFund.add(msg.value);
         challenge.invitedAddresses[_msgSender()] = true;
 
         // adding invitees to the mapping
@@ -123,5 +138,45 @@ contract ChallengePlatform is
 
         emit NewChallengerJumpedIn(_challengeId, _msgSender(), _ipfsHash);
     }
+
+    function resolveChallenge(uint256 _challengeId, address payable _winner)payable  public  {
+      Challenge storage challenge = challenges[_challengeId];
+
+      // check if challenge exists
+      require(challenge.creator != address(0), "Challenge.resolveChallenge : challenge does not exists");
+
+      // check if endTimestamp has reached
+      require(now > challenge.endTimestamp, "Challenge.resolveChallenge : challenge is still going on.");
+      
+      //TODO : send a chinlink get req to get highest like
+      //split funds if 
+      uint256 totalFund = challenge.totalFund;
+      if(totalFund > 0) {
+        challenge.totalFund = 0;
+        _splitFundsInChallenge(challenge.beneficiary, challenge.creator, _winner, totalFund);
+      } 
+      // TODO: REPLACE IPFS_HASH WITH HARDCODED TEXT BELOW
+      emit ChallengeResolved(_challengeId, _winner, "TEST", totalFund);
+    }
+
+    function _splitFundsInChallenge(address payable _beneficiary,
+      address payable _creator, address payable _winner, uint256 _totalFund ) private  {
+        // Calculate Beneficiary's share
+        uint256 beneficiaryShare = _totalFund.div(ONE_HUNDRED_SCALED).mul(beneficiaryPercentage);
+        (bool beneficiaryReceipt, ) = _beneficiary.call{value : beneficiaryShare}("");
+        require(beneficiaryReceipt, "Challenge._splitFundsInChallenge : Failed to send beneficiary's share.");
+
+        // Calculate creator's share
+        uint256 creatorShare = _totalFund.div(ONE_HUNDRED_SCALED).mul(creatorPercentage);
+        (bool creatorReceipt, ) = _creator.call{value : creatorShare}("");
+        require(creatorReceipt, "Challenge._splitFundsInChallenge : Failed to send creator's share.");
+
+        // Calculate winner's share
+        uint256 winnerShare = _totalFund.sub(beneficiaryShare).sub(creatorShare);
+        (bool winnerReceipt, ) = _winner.call{value : winnerShare}("");
+        require(winnerReceipt, "Challenge._splitFundsInChallenge : Failed to send highestLike's share.");
+
+        emit FundsSplitted(_creator, _winner, _beneficiary, _totalFund);
+      }
 
 }
