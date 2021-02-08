@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  * @author The Cool Devs (Lijia, Emma, Ben, Mehrad)
  * @dev a contract facilitating the video relay challenge
  */
-contract ChallengePlatform is
+contract RelayStar is
     ReentrancyGuard,
     Context
 {
