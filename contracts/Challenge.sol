@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
  * @title The Challenge contract
- * @author The Cool Devs 
+ * @author The Cool Devs (Lijia, Emma, Ben, Mehrad)
  * @dev a contract facilitating the video relay challenge
  */
 contract ChallengePlatform is

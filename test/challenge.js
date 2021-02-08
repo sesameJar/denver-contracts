@@ -213,6 +213,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
                             .div(new BN("10000"))
                 .mul(creatorPercentage)
             await time.increaseTo(challengeBefore.endTimestamp.add(ONE));
+            // for simiplicity lest call it from beneficiary otherwise we also need to track tx
             await this.challenge.resolveChallenge(CHALLENGE_1, winner, { from: beneficiary1 });
     
             expect(await balance.current(creator1))
@@ -222,6 +223,28 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
                     )
                 )
         });
+
+        it("beneficiary's balance must be updated", async () => {
+            
+            const beneficiaryPercentage = await this.challenge.creatorPercentage() 
+            const beneficiaryBalanceBefore = await balance.current(creator1);
+            const challengeBefore = await this.challenge.challenges(CHALLENGE_1)
+            
+            const beneficiaryShare = challengeBefore.totalFund
+                            .div(new BN("10000"))
+                .mul(beneficiaryPercentage)
+            await time.increaseTo(challengeBefore.endTimestamp.add(ONE));
+            // for simiplicity lest call it from beneficiary otherwise we also need to track tx
+            await this.challenge.resolveChallenge(CHALLENGE_1, winner, { from: beneficiary1 });
+    
+            expect(await balance.current(creator1))
+                .to.be.bignumber.equal(
+                    beneficiaryBalanceBefore.add(
+                        beneficiaryShare
+                    )
+                )
+        });
+
     })
     
 
