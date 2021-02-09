@@ -31,7 +31,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
                     from: creator1,
                     value: ZERO_ETH
                 }), 
-                "Challenge.startChallenge: You must at least match the minimum entry fee you set!"
+                "RelayStar.startChallenge: You must at least match the minimum entry fee you set!"
             )
         })
         
@@ -90,14 +90,14 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
         it("Can't jumpIn if the challenge is not public and you are not invited", async () => {
             await expectRevert(
                 this.relayStar.jumpIn(CHALLENGE_1, [], IPFSHASH_2, { from: challenger2, value: ONE_ETH }),
-                "Challenge.jumpIn: You need a challenger's invitation."
+                "RelayStar.jumpIn: You need a challenger's invitation."
             )  
         })
 
         it("Can't jumpIn without the minimum entry fee", async () => {
             await expectRevert(
                 this.relayStar.jumpIn(CHALLENGE_1, [], IPFSHASH_2, { from: challenger1 }),
-                "Challenge.jumpIn: Please match the minimum entry fee."
+                "RelayStar.jumpIn: Please match the minimum entry fee."
             )  
         })
 
@@ -127,7 +127,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
 
             await expectRevert(
                 this.relayStar.jumpIn(CHALLENGE_1, [], IPFSHASH_2, { from: challenger1, value: ONE_ETH }),
-                "Challenge.jumpIn: Challenge ended."
+                "RelayStar.jumpIn: Challenge ended."
             )
         })
     })
@@ -151,14 +151,14 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
         it("must fail if challenge hasn't ended", async () => {
              await expectRevert(
                  this.relayStar.resolveChallenge(CHALLENGE_1, winner),
-                 "Challenge.resolveChallenge : challenge is still going on."
+                 "RelayStar.resolveChallenge : challenge is still going on."
             )
         })
 
         it("must fail if challenge does not exist", async () => {
              await expectRevert(
                  this.relayStar.resolveChallenge(new BN("1000"), winner),
-                 "Challenge.resolveChallenge : challenge does not exists"
+                 "RelayStar.resolveChallenge : challenge does not exists"
             )
         })
 

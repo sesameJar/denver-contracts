@@ -45,13 +45,14 @@ contract RelayStar is
     );
 
     struct Challenge {
+      bool isPublic;
+      bool isActive;
+      uint256 totalFund;
+      uint256 minEntryFee;
+      uint256 endTimestamp;
       address payable creator;
       address payable beneficiary;
       mapping(address => bool)  invitedAddresses;
-      bool isPublic;
-      uint256 endTimestamp;
-      uint256 minEntryFee;
-      uint256 totalFund;
     }
 
     struct Video {
@@ -72,36 +73,39 @@ contract RelayStar is
     function startChallenge(address payable _beneficiary, address[] calldata _invitedAddresses,
       uint256 _endTimestamp, uint256 _minEntryFee, string calldata _ipfsHash) 
       nonReentrant public payable returns (uint256) {
-      require(now < _endTimestamp, "Challenge.startChallenge: endTimestamp must be bigger than current timestamp.");
-      require(msg.value >= _minEntryFee, "Challenge.startChallenge: You must at least match the minimum entry fee you set!");
-      uint256 challengId = numChallenges + 1;
 
-      // Challenge storage challenge = challenges[challengId];
+        
+        require(now < _endTimestamp, "RelayStar.startChallenge: endTimestamp must be bigger than current timestamp.");
+        require(msg.value >= _minEntryFee, "RelayStar.startChallenge: You must at least match the minimum entry fee you set!");
+        uint256 challengeId = numChallenges + 1;
 
-      challenges[challengId] = Challenge({
-        creator: _msgSender(),
-        beneficiary: _beneficiary,
-        isPublic: _invitedAddresses.length == 0,
-        endTimestamp: _endTimestamp,
-        minEntryFee: _minEntryFee,
-        totalFund: msg.value
-      });
+        require(challenges[challengeId].creator == address(0), "RelayStar.startChallenge: Challenge already exists.");
 
-      // adding invitees to the mapping
-      for(uint256 i =0 ; i< _invitedAddresses.length; i++) {
-        challenges[challengId].invitedAddresses[_invitedAddresses[i]] = true;
-      }
+        challenges[challengeId] = Challenge({
+          creator: _msgSender(),
+          beneficiary: _beneficiary,
+          isPublic: _invitedAddresses.length == 0,
+          endTimestamp: _endTimestamp,
+          minEntryFee: _minEntryFee,
+          totalFund: msg.value,
+          isActive : true
+        });
 
-      videos[_ipfsHash] = Video({
-        ipfsHash: _ipfsHash,
-        creator: _msgSender(),
-        challengeId: challengId
-      });
-      numChallenges = numChallenges.add(1);
+        // adding invitees to the mapping
+        for(uint256 i =0 ; i< _invitedAddresses.length; i++) {
+          challenges[challengeId].invitedAddresses[_invitedAddresses[i]] = true;
+        }
 
-      emit NewChallengeStarted(challengId, _msgSender(), _beneficiary, _endTimestamp);
+        videos[_ipfsHash] = Video({
+          ipfsHash: _ipfsHash,
+          creator: _msgSender(),
+          challengeId: challengeId
+        });
+        numChallenges = numChallenges.add(1);
 
-      return challengId;
+        emit NewChallengeStarted(challengeId, _msgSender(), _beneficiary, _endTimestamp);
+
+        return challengeId;
 
     }
 
@@ -111,16 +115,17 @@ contract RelayStar is
         
         Challenge storage challenge = challenges[_challengeId];
 
-        // challenge hasn't ended
-        require(now < challenge.endTimestamp, "Challenge.jumpIn: Challenge ended.");
+        // check if challenge hasn't ended
+        require(now < challenge.endTimestamp, "RelayStar.jumpIn: Challenge ended.");
 
         if (!challenge.isPublic) {
-          require(challenge.invitedAddresses[_msgSender()], "Challenge.jumpIn: You need a challenger's invitation.");
+          // if msg.sender is invited
+          require(challenge.invitedAddresses[_msgSender()], "RelayStar.jumpIn: You need a challenger's invitation.");
         }
 
         // if there's an entry fee
         if(challenge.minEntryFee > 0) {
-          require(msg.value >= challenge.minEntryFee, "Challenge.jumpIn: Please match the minimum entry fee.");
+          require(msg.value >= challenge.minEntryFee, "RelayStar.jumpIn: Please match the minimum entry fee.");
         }
 
         challenge.totalFund = challenge.totalFund.add(msg.value);
@@ -143,22 +148,21 @@ contract RelayStar is
       Challenge storage challenge = challenges[_challengeId];
 
       // check if challenge exists
-      require(challenge.creator != address(0), "Challenge.resolveChallenge : challenge does not exists");
+      require(challenge.creator != address(0), "RelayStar.resolveChallenge : challenge does not exists");
 
       // check if endTimestamp has reached
-      require(now > challenge.endTimestamp, "Challenge.resolveChallenge : challenge is still going on.");
-      require(challenge.totalFund > 0, "Challenge.resolveChallenge : Challenge either resolve or raised zero fund.");
+      require(now > challenge.endTimestamp && challenge.isActive, "RelayStar.resolveChallenge : challenge is still going on.");
       //TODO : send a chinlink get req to get highest like 
       uint256 totalFund = challenge.totalFund;
 
       //commented code explaination : originally used to like this but the only way to prevent 
       // resolveing a challenge more than once is to check totalBalance. 
-      // if(totalFund > 0) {
-      //   challenge.totalFund = 0;
-      //   _splitFundsInChallenge(challenge.beneficiary, challenge.creator, _winner, totalFund);
-      // } 
-      challenge.totalFund = 0;
-      _splitFundsInChallenge(challenge.beneficiary, challenge.creator, _winner, totalFund);
+      if(totalFund > 0) {
+        challenge.totalFund = 0;
+        _splitFundsInChallenge(challenge.beneficiary, challenge.creator, _winner, totalFund);
+      }
+      challenge.isActive = false;
+
       // TODO: REPLACE IPFS_HASH WITH HARDCODED TEXT BELOW
       emit ChallengeResolved(_challengeId, _winner, "TEST", totalFund);
     }
@@ -168,17 +172,17 @@ contract RelayStar is
         // Calculate Beneficiary's share
         uint256 beneficiaryShare = _totalFund.div(ONE_HUNDRED_SCALED).mul(beneficiaryPercentage);
         (bool beneficiaryReceipt, ) = _beneficiary.call{value : beneficiaryShare}("");
-        require(beneficiaryReceipt, "Challenge._splitFundsInChallenge : Failed to send beneficiary's share.");
+        require(beneficiaryReceipt, "RelayStar._splitFundsInChallenge : Failed to send beneficiary's share.");
 
         // Calculate creator's share
         uint256 creatorShare = _totalFund.div(ONE_HUNDRED_SCALED).mul(creatorPercentage);
         (bool creatorReceipt, ) = _creator.call{value : creatorShare}("");
-        require(creatorReceipt, "Challenge._splitFundsInChallenge : Failed to send creator's share.");
+        require(creatorReceipt, "RelayStar._splitFundsInChallenge : Failed to send creator's share.");
 
         // Calculate winner's share
         uint256 winnerShare = _totalFund.sub(beneficiaryShare).sub(creatorShare);
         (bool winnerReceipt, ) = _winner.call{value : winnerShare}("");
-        require(winnerReceipt, "Challenge._splitFundsInChallenge : Failed to send highestLike's share.");
+        require(winnerReceipt, "RelayStar._splitFundsInChallenge : Failed to send highestLike's share.");
 
         emit FundsSplitted(_creator, _winner, _beneficiary, _totalFund);
       }
