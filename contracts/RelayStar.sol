@@ -5,6 +5,7 @@ pragma solidity 0.6.12;
 import "@openzeppelin/contracts/GSN/Context.sol"; 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
 
 /**
  * @title The Challenge contract
@@ -13,7 +14,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  */
 contract RelayStar is
     ReentrancyGuard,
-    Context
+    Context,
+    ChainlinkClient
 {
     using SafeMath for uint256;
 
@@ -69,6 +71,15 @@ contract RelayStar is
 
     mapping(string => Video) public videos;
     mapping(uint256 => Challenge) public challenges;
+
+    /********* 
+      CHAINLINK SETUP     
+    *********/
+    //TODO : CHANGE TO PRIVE AND INIT IN CONTRUCTOR
+    uint256 public volume; //DELETE
+    address public oracle = 0x2f90A6D021db21e1B2A077c5a37B3C7E75D15b7e;
+    bytes32 public jobId = "29fa9aa13bf1468788b7cc4a500a45b8";
+    uint256 public fee = 0.1 * 10 ** 18;  // 0.1 LINK
 
     function startChallenge(address payable _beneficiary, address[] calldata _invitedAddresses,
       uint256 _endTimestamp, uint256 _minEntryFee, string calldata _ipfsHash) 
@@ -186,5 +197,40 @@ contract RelayStar is
 
         emit FundsSplitted(_creator, _winner, _beneficiary, _totalFund);
       }
+
+      function requestVolumeData() public returns (bytes32 requestId) 
+    {
+        Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
+        
+        // Set the URL to perform the GET request on
+        request.add("get", "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=ETH&tsyms=USD");
+        
+        // Set the path to find the desired data in the API response, where the response format is:
+        // {"RAW":
+        //   {"ETH":
+        //    {"USD":
+        //     {
+        //      "VOLUME24HOUR": xxx.xxx,
+        //     }
+        //    }
+        //   }
+        //  }
+        request.add("path", "RAW.ETH.USD.VOLUME24HOUR");
+        
+        // Multiply the result by 1000000000000000000 to remove decimals
+        int timesAmount = 10**18;
+        request.addInt("times", timesAmount);
+        
+        // Sends the request
+        return sendChainlinkRequestTo(oracle, request, fee);
+    }
+
+     /**
+     * Receive the response in the form of uint256
+     */ 
+    function fulfill(bytes32 _requestId, uint256 _volume) public recordChainlinkFulfillment(_requestId)
+    {
+        volume = _volume;
+    }
 
 }
