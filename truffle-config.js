@@ -1,7 +1,8 @@
 require('dotenv').config();
 
 const HDWalletProvider = require('@truffle/hdwallet-provider');
-// const getMnemonic = require('./migrations/utils/getMnemonic');
+const INFURA = `https://rinkeby.infura.io/v3/${process.env.INFURA_PROJECT_ID}`;
+const MNEUMONICS = process.env.MNEUMONICS;
 
 function getMnemonic(network) {
     // For live deployments use a specific Ephimera key
@@ -37,7 +38,7 @@ module.exports = {
         },
         rinkeby: {
             provider: function () {
-                return new HDWalletProvider(getMnemonic('rinkeby'), `https://rinkeby.infura.io/v3/059566edea104176bafe6d5a99d92d1a`);
+                 return new HDWalletProvider(MNEUMONICS, INFURA);
                 // console.log(walletProvider);
                 // return walletProvider;
             },
