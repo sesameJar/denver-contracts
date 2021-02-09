@@ -1,7 +1,16 @@
 require('dotenv').config();
+
 const HDWalletProvider = require('@truffle/hdwallet-provider');
-const INFURA = `https://rinkeby.infura.io/v3/${process.env.INFURA_PROJECT_ID}`;
-const MNEUMONICS = process.env.MNEUMONICS;
+// const getMnemonic = require('./migrations/utils/getMnemonic');
+
+function getMnemonic(network) {
+    // For live deployments use a specific Ephimera key
+    if (network === 'mainnet') {
+        return process.env.MAINNET_PK || '';
+    }
+    return process.env.PROTOTYPE_PK || '';
+};
+
 module.exports = {
   // Uncommenting the defaults below 
   // provides for an easier quick-start with Ganache.
@@ -28,9 +37,11 @@ module.exports = {
         },
         rinkeby: {
             provider: function () {
-                return new HDWalletProvider(MNEUMONICS, INFURA);
+                return new HDWalletProvider(getMnemonic('rinkeby'), `https://rinkeby.infura.io/v3/059566edea104176bafe6d5a99d92d1a`);
+                // console.log(walletProvider);
+                // return walletProvider;
             },
-            // provider: new LedgerWalletProvider(ledgerOptions, INFURA),
+            // provider: new LedgerWalletProvider(ledgerOptions,  `https://rinkeby.infura.io/v3/${INFURA_KEY}`),
             network_id: 4,
             gas: 6000000,
             gasPrice: 25000000000, // 25 Gwei. default = 100 gwei = 100000000000

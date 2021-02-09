@@ -62,7 +62,7 @@ contract RelayStar is
       address creator;
       uint256 challengeId;
     }
-
+    address private platform;
     uint256 public numChallenges = 0;
     uint256 public creatorPercentage = 300;
     uint256 public beneficiaryPercentage = 9000;
@@ -80,6 +80,15 @@ contract RelayStar is
     address public oracle = 0x2f90A6D021db21e1B2A077c5a37B3C7E75D15b7e;
     bytes32 public jobId = "29fa9aa13bf1468788b7cc4a500a45b8";
     uint256 public fee = 0.1 * 10 ** 18;  // 0.1 LINK
+    event Test(string message);
+
+    constructor(
+      
+    ) public {
+      setPublicChainlinkToken();
+
+
+    }
 
     function startChallenge(address payable _beneficiary, address[] calldata _invitedAddresses,
       uint256 _endTimestamp, uint256 _minEntryFee, string calldata _ipfsHash) 
@@ -231,6 +240,7 @@ contract RelayStar is
     function fulfill(bytes32 _requestId, uint256 _volume) public recordChainlinkFulfillment(_requestId)
     {
         volume = _volume;
+        emit Test("GOT IN CALLBACK");
     }
 
 }
