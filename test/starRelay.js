@@ -58,7 +58,8 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
                 challengeId: CHALLENGE_1,
                 creator: creator1,
                 beneficiary: beneficiary1,
-                endTimestamp: this.challengeEndTimestamp
+                endTimestamp: this.challengeEndTimestamp,
+                ipfsHash: IPFSHASH_1
             })
             const { challengeId } = await this.starRelay.videos(IPFSHASH_1)
             const { creator, beneficiary, totalFund } = await this.starRelay.challenges(challengeId)
@@ -82,7 +83,8 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
                 challengeId: CHALLENGE_1,
                 creator: creator1,
                 beneficiary: beneficiary1,
-                endTimestamp: challengeEndTimestamp
+                endTimestamp: challengeEndTimestamp,
+                ipfsHash: IPFSHASH_1
             })
         })
 
@@ -107,7 +109,8 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
             await expectEvent(receipt, 'NewChallengerJumpedIn', {
                 challengeId: CHALLENGE_1,
                 challenger: challenger1,
-                ipfsHash: IPFSHASH_2
+                ipfsHash: IPFSHASH_2,
+                totalFund: challengeBefore.totalFund.add(ONE_ETH)
             })
             
             const video = await this.starRelay.videos(IPFSHASH_2)
@@ -144,7 +147,8 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
                 challengeId: CHALLENGE_1,
                 creator: creator1,
                 beneficiary: beneficiary1,
-                endTimestamp: challengeEndTimestamp
+                endTimestamp: challengeEndTimestamp,
+                ipfsHash: IPFSHASH_1
             })
         })
          

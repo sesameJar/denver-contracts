@@ -23,13 +23,15 @@ contract StarRelay is
       uint256 indexed challengeId, 
       address indexed creator, 
       address indexed beneficiary, 
-      uint256 endTimestamp
+      uint256 endTimestamp,
+      string ipfsHash
     );
 
     event NewChallengerJumpedIn(
       uint256 indexed challengeId,
       address indexed challenger,
-      string ipfsHash
+      string ipfsHash,
+      uint256 totalFund
     );
 
     event ChallengeResolved(
@@ -46,6 +48,12 @@ contract StarRelay is
       uint256 totalFund
     );
 
+    event Invitation(
+      uint256 indexed challengeId,
+      address indexed challenger,
+      address indexed invitee
+    );
+
     struct Challenge {
       bool isPublic;
       bool isActive;
@@ -54,7 +62,7 @@ contract StarRelay is
       uint256 endTimestamp;
       address payable creator;
       address payable beneficiary;
-      mapping(address => bool)  invitedAddresses;
+      mapping(address => bool) invitedAddresses;
     }
 
     struct Video {
@@ -112,6 +120,7 @@ contract StarRelay is
         // adding invitees to the mapping
         for(uint256 i =0 ; i< _invitedAddresses.length; i++) {
           challenges[challengeId].invitedAddresses[_invitedAddresses[i]] = true;
+          emit Invitation(challengeId, _msgSender(), _invitedAddresses[i]);
         }
 
         videos[_ipfsHash] = Video({
@@ -121,7 +130,7 @@ contract StarRelay is
         });
         numChallenges = numChallenges.add(1);
 
-        emit NewChallengeStarted(challengeId, _msgSender(), _beneficiary, _endTimestamp);
+        emit NewChallengeStarted(challengeId, _msgSender(), _beneficiary, _endTimestamp, _ipfsHash);
 
         return challengeId;
 
@@ -152,6 +161,7 @@ contract StarRelay is
         // adding invitees to the mapping
         for(uint256 i =0 ; i< _invitedAddresses.length; i++) {
           challenge.invitedAddresses[_invitedAddresses[i]] = true;
+          emit Invitation(_challengeId, _msgSender(), _invitedAddresses[i]);
         }
         videos[_ipfsHash] = Video({
           ipfsHash: _ipfsHash,
@@ -159,7 +169,7 @@ contract StarRelay is
           challengeId: _challengeId
         });
 
-        emit NewChallengerJumpedIn(_challengeId, _msgSender(), _ipfsHash);
+        emit NewChallengerJumpedIn(_challengeId, _msgSender(), _ipfsHash, challenge.totalFund);
     }
 
     function resolveChallenge(uint256 _challengeId, address payable _winner)payable  public  {
