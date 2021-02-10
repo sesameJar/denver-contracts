@@ -62,6 +62,8 @@ contract StarRelay is
       uint256 endTimestamp;
       address payable creator;
       address payable beneficiary;
+      address payable lastChallenger;
+      string lastVideoHash;
       mapping(address => bool) invitedAddresses;
     }
 
@@ -70,6 +72,7 @@ contract StarRelay is
       address creator;
       uint256 challengeId;
     }
+
     address private platform;
     uint256 public numChallenges = 0;
     uint256 public creatorPercentage = 300;
@@ -79,22 +82,6 @@ contract StarRelay is
 
     mapping(string => Video) public videos;
     mapping(uint256 => Challenge) public challenges;
-
-    /********* 
-      CHAINLINK SETUP     
-    *********/
-    //TODO : CHANGE TO PRIVE AND INIT IN CONTRUCTOR
-    uint256 public volume; //DELETE
-    address public oracle = 0x29CE4C76e6aaA0670751290AC167eeF4B1c6F3E3;
-    bytes32 public jobId = "90624339fabd4c64bbbcf37a007a423e";
-    uint256 public fee = 0.1 * 10 ** 18;  // 0.1 LINK
-    event Test(string message);
-
-    // constructor(
-      
-    // ) public {
-    //   setPublicChainlinkToken();
-    // }
 
     function startChallenge(address payable _beneficiary, address[] calldata _invitedAddresses,
       uint256 _endTimestamp, uint256 _minEntryFee, string calldata _ipfsHash) 
@@ -114,6 +101,8 @@ contract StarRelay is
           endTimestamp: _endTimestamp,
           minEntryFee: _minEntryFee,
           totalFund: msg.value,
+          lastChallenger : _msgSender(),
+          lastVideoHash : _ipfsHash,
           isActive : true
         });
 
@@ -157,7 +146,9 @@ contract StarRelay is
 
         challenge.totalFund = challenge.totalFund.add(msg.value);
         challenge.invitedAddresses[_msgSender()] = true;
-
+        challenge.lastChallenger = _msgSender();
+        challenge.lastVideoHash = _ipfsHash;
+        
         // adding invitees to the mapping
         for(uint256 i =0 ; i< _invitedAddresses.length; i++) {
           challenge.invitedAddresses[_invitedAddresses[i]] = true;
@@ -172,7 +163,7 @@ contract StarRelay is
         emit NewChallengerJumpedIn(_challengeId, _msgSender(), _ipfsHash, challenge.totalFund);
     }
 
-    function resolveChallenge(uint256 _challengeId, address payable _winner)payable  public  {
+    function resolveChallenge(uint256 _challengeId) payable  public  {
       Challenge storage challenge = challenges[_challengeId];
 
       // check if challenge exists
@@ -187,12 +178,12 @@ contract StarRelay is
       // resolveing a challenge more than once is to check totalBalance. 
       if(totalFund > 0) {
         challenge.totalFund = 0;
-        _splitFundsInChallenge(challenge.beneficiary, challenge.creator, _winner, totalFund);
+        _splitFundsInChallenge(challenge.beneficiary, challenge.creator, challenge.lastChallenger, totalFund);
       }
       challenge.isActive = false;
 
       // TODO: REPLACE IPFS_HASH WITH HARDCODED TEXT BELOW
-      emit ChallengeResolved(_challengeId, _winner, "TEST", totalFund);
+      emit ChallengeResolved(_challengeId, challenge.lastChallenger, "TEST", totalFund);
     }
 
     function _splitFundsInChallenge(address payable _beneficiary,
@@ -213,42 +204,6 @@ contract StarRelay is
         require(winnerReceipt, "StarRelay._splitFundsInChallenge : Failed to send highestLike's share.");
 
         emit FundsSplitted(_creator, _winner, _beneficiary, _totalFund);
-      }
-
-      function requestVolumeData() public returns (bytes32 requestId) 
-    {
-        Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
-        
-        // Set the URL to perform the GET request on
-        request.add("httpget", "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd");
-        
-        // Set the path to find the desired data in the API response, where the response format is:
-        // {"RAW":
-        //   {"ETH":
-        //    {"USD":
-        //     {
-        //      "VOLUME24HOUR": xxx.xxx,
-        //     }
-        //    }
-        //   }
-        //  }
-        request.add("jsonparse", "ethereum.usd");
-        
-        // Multiply the result by 1000000000000000000 to remove decimals
-        int timesAmount = 10**3;
-        request.addInt("multiply", timesAmount);
-        
-        // Sends the request
-        return sendChainlinkRequestTo(oracle, request, fee);
-    }
-
-     /**
-     * Receive the response in the form of uint256
-     */ 
-    function fulfill(bytes32 _requestId, uint256 _volume) public recordChainlinkFulfillment(_requestId)
-    {
-        volume = _volume;
-        emit Test("GOT IN CALLBACK");
-    }
+      }  
 
 }
