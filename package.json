@@ -1,5 +1,5 @@
 {
-  "name": "denver-contracts",
+  "name": "StarRelay",
   "version": "1.0.0",
   "description": "",
   "main": "truffle-config.js",
@@ -20,9 +20,14 @@
   },
   "homepage": "https://github.com/sesameJar/denver-contracts#readme",
   "dependencies": {
-    "@openzeppelin/contracts": "^3.4.0"
+    "@openzeppelin/contracts": "^3.4.0",
+    "@truffle/hdwallet-provider": "^1.2.1",
+    "dotenv": "^8.2.0",
+    "@chainlink/contracts": "^0.1.6"
   },
   "devDependencies": {
-    "@openzeppelin/test-helpers": "^0.5.10"
+    "@openzeppelin/test-helpers": "^0.5.10",
+    "@truffle/hdwallet-provider": "^1.2.1",
+    "dotenv": "^8.2.0"
   }
 }
