@@ -183,7 +183,7 @@ contract StarRelay is
       challenge.isActive = false;
 
       // TODO: REPLACE IPFS_HASH WITH HARDCODED TEXT BELOW
-      emit ChallengeResolved(_challengeId, challenge.lastChallenger, "TEST", totalFund);
+      emit ChallengeResolved(_challengeId, challenge.lastChallenger, challenge.lastVideoHash, totalFund);
     }
 
     function _splitFundsInChallenge(address payable _beneficiary,

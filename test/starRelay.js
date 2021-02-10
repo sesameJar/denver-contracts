@@ -135,33 +135,48 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
         })
     })
 
-    describe('Resolve a challenge', () => { 
+    describe('Resolve a challenge', async () => { 
         beforeEach(async () => {
+            const currentChallenges= await this.starRelay.numChallenges()
+            this.nextChallengeId = currentChallenges.add(ONE)
             const now = await time.latest()
             const challengeEndTimestamp = now.add(new BN((19 * 24 * 60 * 60).toString()))
-            const logs = await this.starRelay.startChallenge(beneficiary1, [challenger1], challengeEndTimestamp, ONE_ETH, IPFSHASH_1, {
+            const logs = await this.starRelay.startChallenge(beneficiary1, [], challengeEndTimestamp, ONE_ETH, IPFSHASH_1, {
                 from: creator1,
                 value: ONE_ETH
             })
+            
             await expectEvent(logs, 'NewChallengeStarted', {
-                challengeId: CHALLENGE_1,
+                challengeId: this.nextChallengeId,
                 creator: creator1,
                 beneficiary: beneficiary1,
                 endTimestamp: challengeEndTimestamp,
                 ipfsHash: IPFSHASH_1
             })
+            
+            const logs2 = await this.starRelay.jumpIn(this.nextChallengeId, [], IPFSHASH_2, { from: winner, value: ONE_ETH })
+            const challenge = await this.starRelay.challenges(this.nextChallengeId)
+           
+            await expectEvent(logs2, 'NewChallengerJumpedIn', {
+                challengeId: this.nextChallengeId,
+                challenger: winner,
+                ipfsHash: IPFSHASH_2,
+                totalFund: challenge.totalFund
+            })
+            
         })
          
         it("must fail if challenge hasn't ended", async () => {
+            console.log(await this.starRelay.numChallenges())
              await expectRevert(
-                 this.starRelay.resolveChallenge(CHALLENGE_1, winner),
+                 this.starRelay.resolveChallenge(this.nextChallengeId),
                  "StarRelay.resolveChallenge : challenge is still going on."
             )
         })
 
         it("must fail if challenge does not exist", async () => {
              await expectRevert(
-                 this.starRelay.resolveChallenge(new BN("1000"), winner),
+                 this.starRelay.resolveChallenge(new BN("1000")),
                  "StarRelay.resolveChallenge : challenge does not exists"
             )
         })
@@ -169,15 +184,15 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
         it("total funds are 0 after resolved", async () => {
             const {totalFund, endTimestamp} = await this.starRelay.challenges(CHALLENGE_1)
             await time.increaseTo(endTimestamp.add(ONE));
-            const {receipt} = await this.starRelay.resolveChallenge(CHALLENGE_1, winner);
+            const {receipt} = await this.starRelay.resolveChallenge(this.nextChallengeId);
             
             await expectEvent(receipt, "ChallengeResolved", {
                 challengeId: CHALLENGE_1,
                 winner, 
-                ipfsHash: "TEST",
+                ipfsHash: IPFSHASH_2,
                 totalFund
             })
-            const challengeAfterResolve = await this.starRelay.challenges(CHALLENGE_1)
+            const challengeAfterResolve = await this.starRelay.challenges(this.nextChallengeId)
             expect(
                 challengeAfterResolve.totalFund
             ).to.be.bignumber.equal("0");
@@ -197,7 +212,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
                             .div(new BN("10000"))
                 .mul(winnerPercentage)
             await time.increaseTo(challengeBefore.endTimestamp.add(ONE));
-            await this.starRelay.resolveChallenge(CHALLENGE_1, winner, { from: creator1 });
+            await this.starRelay.resolveChallenge(CHALLENGE_1, { from: creator1 });
     
             expect(await balance.current(winner))
                 .to.be.bignumber.equal(
@@ -218,7 +233,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
                 .mul(creatorPercentage)
             await time.increaseTo(challengeBefore.endTimestamp.add(ONE));
             // for simiplicity lest call it from beneficiary otherwise we also need to track tx
-            await this.starRelay.resolveChallenge(CHALLENGE_1, winner, { from: beneficiary1 });
+            await this.starRelay.resolveChallenge(CHALLENGE_1, { from: beneficiary1 });
     
             expect(await balance.current(creator1))
                 .to.be.bignumber.equal(
@@ -239,7 +254,7 @@ contract('ChallengePlatform', ([challenger1, challenger2, creator1, winner, bene
                 .mul(beneficiaryPercentage)
             await time.increaseTo(challengeBefore.endTimestamp.add(ONE));
             // for simiplicity lest call it from beneficiary otherwise we also need to track tx
-            await this.starRelay.resolveChallenge(CHALLENGE_1, winner, { from: beneficiary1 });
+            await this.starRelay.resolveChallenge(CHALLENGE_1, { from: beneficiary1 });
     
             expect(await balance.current(creator1))
                 .to.be.bignumber.equal(
