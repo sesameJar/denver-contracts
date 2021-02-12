@@ -1,5 +1,5 @@
 # Star Relay Contract
-- This is the very first version of start realy contract. A social media for good-cause charities. Remember ``Ice Buck challenge`` ? So, you can simple start a challenge and set who can participate(or public) and how much is the entry fee (or also free) and then send you video.
+- This is the very first version of start realy contract. A social media for good-cause charities. Remember ``Ice Bucket challenge`` ? So, you can simple start a challenge and set who can participate(or public) and how much is the entry fee (or also free) and then send you video.
 
 ## How to begin
     - git pull https://github.com/sesameJar/denver-contracts.git
